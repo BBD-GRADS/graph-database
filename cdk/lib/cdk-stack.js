@@ -1,8 +1,10 @@
 const { Stack, Duration } = require("aws-cdk-lib");
 const s3 = require("aws-cdk-lib/aws-s3");
-const s3deploy = require("aws-cdk-lib/aws-s3-deployment");
 const { RemovalPolicy } = require("aws-cdk-lib");
-const iam = require("aws-cdk-lib/aws-iam");
+const ecs = require("aws-cdk-lib/aws-ecs");
+const ecs_patterns = require("aws-cdk-lib/aws-ecs-patterns");
+const ec2 = require("aws-cdk-lib/aws-ec2");
+const ecr = require("aws-cdk-lib/aws-ecr");
 
 class CdkStack extends Stack {
   /**
@@ -28,6 +30,43 @@ class CdkStack extends Stack {
         restrictPublicBuckets: false,
       }),
     });
+
+    const vpc = new ec2.Vpc(this, "MyVpc", {
+      maxAzs: 2,
+    });
+
+    const cluster = new ecs.Cluster(this, "MyCluster", {
+      vpc: vpc,
+      clusterName: "graphdatabasecluster",
+    });
+
+    const ecrRepository = ecr.Repository.fromRepositoryName(
+      this,
+      "Repo",
+      "graphdatabaserp"
+    );
+
+    new ecs_patterns.ApplicationLoadBalancedFargateService(
+      this,
+      "MyFargateService",
+      {
+        cluster: cluster,
+        cpu: 256,
+        desiredCount: 1,
+        taskImageOptions: {
+          image: ecs.ContainerImage.fromEcrRepository(ecrRepository, "latest"),
+          containerPort: 5000,
+          environment: {
+            FLASK_APP: "./main.py",
+          },
+        },
+        memoryLimitMiB: 512,
+        publicLoadBalancer: true,
+
+        serviceName: "graphdatabaseservice",
+        loadBalancerName: "graphdatabaselb",
+      }
+    );
   }
 }
 
