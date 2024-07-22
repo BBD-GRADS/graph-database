@@ -51,7 +51,7 @@ class CdkStack extends Stack {
       "MyFargateService",
       {
         cluster: cluster,
-        cpu: 256,
+        cpu: 1024,
         desiredCount: 1,
         taskImageOptions: {
           image: ecs.ContainerImage.fromEcrRepository(ecrRepository, "latest"),
@@ -60,7 +60,7 @@ class CdkStack extends Stack {
             FLASK_APP: "./main.py",
           },
         },
-        memoryLimitMiB: 512,
+        memoryLimitMiB: 2048,
         publicLoadBalancer: true,
 
         serviceName: "graphdatabaseservice",
