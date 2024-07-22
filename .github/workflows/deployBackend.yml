@@ -43,4 +43,5 @@ jobs:
           aws ecs update-service \
             --cluster graphdatabasecluster \
             --service graphdatabaseservice \
-            --force-new-deployment
+            --force-new-deployment \
+            --deployment-configuration "maximumPercent=200,minimumHealthyPercent=0"
