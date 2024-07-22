@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./App.css";
+import "./homePage.css";
 
 function App() {
 	const [gridSize, setGridSize] = useState(5);
@@ -18,8 +18,8 @@ function App() {
 
 	const handleSubmit = (event) => {
 		event.preventDefault();
-		//simulate finding a route with fake data covering all drop-off points
-		//just marks all the points for now will connect them
+		// simulate finding a route with fake data covering all drop-off points
+		// will add lines instead of just highlighting the route when backend returns optimal route
 		if (start) {
 			const routePoints = [start, ...locations];
 			setRoute(routePoints);
