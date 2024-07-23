@@ -17,14 +17,17 @@ password = os.getenv("NEO4J_PASSWORD")
 # Create a Neo4j driver instance
 driver = GraphDatabase.driver(uri, auth=basic_auth(username, password))
 
+
 # Ensure the driver is closed on exit
 @atexit.register
 def close_driver():
     driver.close()
 
+
 @app.route("/")
 def home():
     return "Welcome to the graph database app!"
+
 
 # Get all delivery points
 @app.route('/delivery/points', methods=['GET'])
@@ -43,6 +46,7 @@ def get_delivery_points():
             return jsonify(points)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
 
 # Get optimal delivery route
 @app.route('/delivery/route', methods=['GET'])
@@ -71,6 +75,7 @@ def get_delivery_route():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+
 # Add delivery point
 @app.route('/delivery/point', methods=['POST'])
 def post_delivery_point():
@@ -97,6 +102,7 @@ def post_delivery_point():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+
 # Delete delivery point
 @app.route('/delivery/point', methods=['DELETE'])
 def delete_delivery_point():
@@ -116,6 +122,7 @@ def delete_delivery_point():
             return jsonify({"message": f"Delivery point '{delivery_point_id}' deleted successfully"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
