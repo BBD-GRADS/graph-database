@@ -18,14 +18,17 @@ password = os.getenv("NEO4J_PASSWORD")
 # Create a Neo4j driver instance
 driver = GraphDatabase.driver(uri, auth=basic_auth(username, password))
 
+
 # Ensure the driver is closed on exit
 @atexit.register
 def close_driver():
     driver.close()
 
+
 @app.route("/")
 def home():
     return "Welcome to the graph database app!"
+
 
 # Get all delivery points
 @app.route('/delivery/points', methods=['GET'])
@@ -45,41 +48,50 @@ def get_delivery_points():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+
 # Get optimal delivery route
 @app.route('/delivery/route', methods=['GET'])
 def get_delivery_route():
     start_point = request.args.get('startPoint')
     end_point = request.args.get('endPoint')
 
-    if not start_point or not end_point:
-        return jsonify({"error": "Please provide both startPoint and endPoint"}), 400
-
-    def find_route(tx, start, end):
-        query = (
-            "MATCH (start:DeliveryPoint {DeliveryPointID: $start_id}), "
-            "(end:DeliveryPoint {DeliveryPointID: $end_id}), "
-            "path = shortestPath((start)-[:ROUTE_TO*]->(end)) "
-            "RETURN path"
-        )
-        result = tx.run(query, start_id=start, end_id=end)
-        path_record = result.single()
-        if path_record is None or path_record["path"] is None:
-            return None, None
-        path = path_record["path"]
-        return [{"DeliveryPointID": node["DeliveryPointID"]} for node in path.nodes], path.relationships
+    def find_path(tx, start, end):
+        print("start point: " + start)
+        print("end point: " + end)
+        result = tx.run("""
+            MATCH (start:DeliveryPoint {DeliveryPointID: $start_point}), 
+                          (end:DeliveryPoint {DeliveryPointID: $end_point})
+                    CALL {
+                      WITH start, end
+                      MATCH path = allShortestPaths((start)-[:ROUTE_TO*]->(end))
+                      RETURN path
+                    }
+                    WITH path, reduce(totalTime = 0.0, rel in relationships(path) | totalTime + (rel.distance / rel.speed_limit)) AS totalTime
+                    RETURN path, totalTime
+                    ORDER BY totalTime ASC
+                    LIMIT 1
+            """, start_point=start, end_point=end)
+        return list(result)
 
     with driver.session() as session:
         try:
-            route, relationships = session.read_transaction(find_route, start_point, end_point)
-            if route is None:
+            data = session.execute_read(
+                find_path,
+                start_point,
+                end_point
+            )
+
+            if data:
+                path = data["path"]
+                totalTime = data["totalTime"]
+                nodes = [{"DeliveryPointID": node["DeliveryPointID"]} for node in path.nodes]
+                response = {
+                    "route": nodes,
+                    "totalTime": totalTime
+                }
+                return jsonify(response)
+            else:
                 return jsonify({"error": "No path found between the specified delivery points"}), 404
-
-            if relationships is None:
-                return jsonify({"error": "No relationships found for the path"}), 404
-
-            total_distance = sum(rel["distance"] for rel in relationships)
-            total_time = sum(rel["distance"] / rel["speed_limit"] for rel in relationships)
-            return jsonify({"route": route, "total_distance": total_distance, "total_time": total_time})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -129,15 +141,19 @@ def post_delivery_point():
                     "MATCH (a:DeliveryPoint {DeliveryPointID: $id1}), (b:DeliveryPoint {DeliveryPointID: $id2}) "
                     "CREATE (a)-[:ROUTE_TO {distance: $distance, speed_limit: $speed_limit}]->(b)"
                 )
-                tx.run(create_edge_query, id1=point_id, id2=existing_point_id, distance=distance, speed_limit=speed_limit)
-                tx.run(create_edge_query, id1=existing_point_id, id2=point_id, distance=distance, speed_limit=speed_limit)
+                tx.run(create_edge_query, id1=point_id, id2=existing_point_id, distance=distance,
+                       speed_limit=speed_limit)
+                tx.run(create_edge_query, id1=existing_point_id, id2=point_id, distance=distance,
+                       speed_limit=speed_limit)
 
     with driver.session() as session:
         try:
             session.write_transaction(create_point_and_edges, delivery_point_id, x, y, speed_limit)
-            return jsonify({"message": f"Delivery point '{delivery_point_id}' and its routes created successfully"}), 201
+            return jsonify(
+                {"message": f"Delivery point '{delivery_point_id}' and its routes created successfully"}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
 
 # Delete delivery point
 @app.route('/delivery/point', methods=['DELETE'])
@@ -159,6 +175,7 @@ def delete_delivery_point():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+
 # Delete all delivery points
 @app.route('/delivery/all-points', methods=['DELETE'])
 def delete_all_delivery_points():
@@ -172,6 +189,7 @@ def delete_all_delivery_points():
             return jsonify({"message": "All delivery points and their routes deleted successfully"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
