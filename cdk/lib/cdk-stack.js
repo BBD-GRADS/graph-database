@@ -5,6 +5,7 @@ const ecs = require("aws-cdk-lib/aws-ecs");
 const ecs_patterns = require("aws-cdk-lib/aws-ecs-patterns");
 const ec2 = require("aws-cdk-lib/aws-ec2");
 const ecr = require("aws-cdk-lib/aws-ecr");
+const secretsmanager = require("aws-cdk-lib/aws-secretsmanager");
 
 class CdkStack extends Stack {
   /**
@@ -46,6 +47,12 @@ class CdkStack extends Stack {
       "graphdatabaserp"
     );
 
+    const neo4jSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      "Neo4jSecret",
+      "neo4j/credentials"
+    );
+
     new ecs_patterns.ApplicationLoadBalancedFargateService(
       this,
       "MyFargateService",
@@ -58,6 +65,17 @@ class CdkStack extends Stack {
           containerPort: 5000,
           environment: {
             FLASK_APP: "./main.py",
+          },
+          secrets: {
+            NEO4J_URI: ecs.Secret.fromSecretsManager(neo4jSecret, "NEO4J_URI"),
+            NEO4J_USERNAME: ecs.Secret.fromSecretsManager(
+              neo4jSecret,
+              "NEO4J_USERNAME"
+            ),
+            NEO4J_PASSWORD: ecs.Secret.fromSecretsManager(
+              neo4jSecret,
+              "NEO4J_PASSWORD"
+            ),
           },
         },
         memoryLimitMiB: 2048,
