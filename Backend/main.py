@@ -61,7 +61,7 @@ def get_delivery_route():
         # TODO: remove hardcoded id
         result = tx.run("""
             // Step 1: Start from DeliveryPoint 1 and get all other points
-            MATCH (start:DeliveryPoint {DeliveryPointID: 3})
+            MATCH (start:DeliveryPoint {DeliveryPointID: """, start, """})
             MATCH (other:DeliveryPoint)
             WHERE other <> start
             WITH start, collect(other) AS others
@@ -109,12 +109,48 @@ def get_delivery_route():
 
             if data:
                 for node in data:
-                    print(node)
+                    print(node, "\n")
                 return jsonify("Success")
             else:
                 return jsonify({"error": "No path found between the specified delivery points"}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+
+@app.route('/delivery/routesingle', methods=['GET'])
+def get_delivery_route_single():
+    start_point = request.args.get('startPoint')
+    end_point = request.args.get('endPoint')
+    print("start point: " + start_point)
+    print("end point: " + end_point)
+
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (start:DeliveryPoint {DeliveryPointID: """, start_point, """}), 
+                  (end:DeliveryPoint {DeliveryPointID: """, end_point, """})
+            CALL {
+              WITH start, end
+              MATCH path = allShortestPaths((start)-[:ROUTE_TO*]->(end))
+              RETURN path
+            }
+            WITH path, reduce(totalTime = 0.0, rel in relationships(path) | totalTime + (rel.distance / rel.speed_limit)) AS totalTime
+            RETURN path, totalTime
+            ORDER BY totalTime ASC
+        """)
+
+        record = result.single()
+
+        if record:
+            path = record["path"]
+            totalTime = record["totalTime"]
+            nodes = [{"DeliveryPointID": node["DeliveryPointID"]} for node in path.nodes]
+            response = {
+                "route": nodes,
+                "totalTime": totalTime
+            }
+            return jsonify(response)
+        else:
+            return jsonify({"error": "No path found between the specified delivery points"}), 404
 
 
 # Add delivery point and create edges with distances and speed limits
