@@ -129,9 +129,26 @@ form {
   background-color: #174824;
 }
 
+.button--dark {
+  background-color: rgb(180, 0, 0);
+  border-radius: 1rem;
+  font-size: 16px;
+  color: white;
+  width: 10vw;
+  height: 5vh;
+  border: none;
+}
+
+.button--dark:hover {
+  cursor: pointer;
+  background-color: rgb(112, 0, 0);
+}
+
 .button-container {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
+  font-weight: bold;
 }
 
 .cell {
