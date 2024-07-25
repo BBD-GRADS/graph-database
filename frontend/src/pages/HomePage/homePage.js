@@ -11,14 +11,18 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import "./homePage.css";
-import { getAllDeliveryPoints } from "../../apiClient/apiClient";
+import {
+  getAllDeliveryPoints,
+  deleteDeliveryPoint,
+  addDeliveryPoint,
+} from "../../apiClient/apiClient";
 function App() {
   const [gridSize, setGridSize] = useState(5);
   const [start, setStart] = useState(null);
   const [route, setRoute] = useState([]);
   const [locations, setLocations] = useState([]);
   const [newLocation, setNewLocation] = useState({ x: "", y: "" });
-  const [newSpeedLimit, setNewSpeedLimit] = useState({ x: "", y: "" });
+  const [newSpeedLimit, setNewSpeedLimit] = useState("");
   const [deleteLocation, setDeleteLocation] = useState({ x: "", y: "" });
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -32,24 +36,46 @@ function App() {
       );
   }, []);
 
-  const addLocationHandler = () => {
+  const addLocationHandler = async (event) => {
+    event.preventDefault();
     const { x, y } = newLocation;
-    if (x !== "" && y !== "") {
-      setLocations([...locations, { x: parseInt(x), y: parseInt(y) }]);
-      setNewLocation({ x: "", y: "" });
+    const speed_limit = newSpeedLimit;
+    if (x !== "" && y !== "" && speed_limit !== "") {
+      try {
+        await addDeliveryPoint({
+          x: parseFloat(x),
+          y: parseFloat(y),
+          speed_limit: parseFloat(speed_limit),
+        });
+        setLocations([
+          ...locations,
+          {
+            x: parseFloat(x),
+            y: parseFloat(y),
+            speed_limit: parseFloat(speed_limit),
+          },
+        ]);
+        setNewLocation({ x: "", y: "" });
+        setNewSpeedLimit("");
+      } catch (error) {
+        console.error("Error adding delivery point:", error);
+      }
     }
   };
-
-  const deleteLocationHandler = () => {
-    //call endpoint
+  const deleteLocationHandler = async () => {
     const { x, y } = deleteLocation;
     if (x !== "" && y !== "") {
-      setLocations(
-        locations.filter(
-          (loc) => loc.x !== parseInt(x) || loc.y !== parseInt(y)
-        )
-      );
-      setDeleteLocation({ x: "", y: "" });
+      try {
+        await deleteDeliveryPoint(x, y);
+        setLocations(
+          locations.filter(
+            (loc) => loc.x !== parseInt(x) || loc.y !== parseInt(y)
+          )
+        );
+        setDeleteLocation({ x: "", y: "" });
+      } catch (error) {
+        console.error("Error deleting delivery point:", error);
+      }
     }
   };
 
@@ -166,10 +192,10 @@ function App() {
                 <label>Add Speed Limit (km/h): </label>
                 <input
                   className="input"
-                  type="number"
                   value={newSpeedLimit}
-                  onChange={(val) => setNewSpeedLimit(val)}
+                  onChange={(e) => setNewSpeedLimit(e.target.value)}
                   placeholder="km/h"
+                  controlled
                 />
               </section>
               <section className="button-container">

@@ -23,10 +23,10 @@ export const addDeliveryPoint = async (pointData) => {
 	}
 };
 
-export const deleteDeliveryPoint = async (deliveryPointID) => {
+export const deleteDeliveryPoint = async (x, y) => {
 	try {
 		const response = await axios.delete(`${BASE_URL}/delivery/point`, {
-			data: { DeliveryPointID: deliveryPointID },
+			data: { x, y },
 		});
 		return response.data;
 	} catch (error) {
