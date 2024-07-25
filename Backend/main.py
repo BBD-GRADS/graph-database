@@ -52,15 +52,16 @@ def get_delivery_points():
 # Get optimal delivery route
 @app.route('/delivery/route', methods=['GET'])
 def get_delivery_route():
-    start_point_x = request.args.get('startPointX')
+    start_x = request.args.get('startX')
+    start_y = request.args.get('startY')
 
-    if not start_point_x:
-        return jsonify({"error": "Please provide startPointX"}), 400
+    if not start_x or not start_y:
+        return jsonify({"error": "Please provide start point X and Y coords"}), 400
 
     def find_path(tx, start_x, start_y):
-        result = tx.run("""
-            // Step 1: Start from DeliveryPoint 1 and get all other points
-            MATCH (start:DeliveryPoint {DeliveryPointID: """, start_point_x, """})
+        query = f"""
+            // Step 1: Start from the DeliveryPoint with specified x and y coordinates and get all other points
+            MATCH (start:DeliveryPoint {{x: {start_x}, y: {start_y}}})
             MATCH (other:DeliveryPoint)
             WHERE other <> start
             WITH start, collect(other) AS others
@@ -68,10 +69,10 @@ def get_delivery_route():
             UNWIND others AS other
             MATCH path = shortestPath((start)-[:ROUTE_TO*]-(other))
             WITH start, other, path,
-            reduce(s = 0, r IN relationships(path) | s + (r.distance / r.speed_limit)) AS time
+                 reduce(s = 0, r IN relationships(path) | s + (r.distance / r.speed_limit)) AS time
             ORDER BY time
 
-            WITH start, collect({node: other, time: time}) AS orderedNodes
+            WITH start, collect({{node: other, time: time}}) AS orderedNodes
 
             WITH [start] + [node IN orderedNodes | node.node] AS fullPath
 
@@ -79,25 +80,27 @@ def get_delivery_route():
             WITH fullPath, i, fullPath[i] AS current, fullPath[i+1] AS next
 
             MATCH (current)-[r:ROUTE_TO]->(next)
-            WITH fullPath, collect({start: current, end: next, relationship: r,
-            time: r.distance / r.speed_limit, distance: r.distance}) AS routes
+            WITH fullPath, collect({{start: current, end: next, relationship: r,
+                                    time: r.distance / r.speed_limit, distance: r.distance}}) AS routes
 
             WITH routes,
-            [node IN fullPath | node.DeliveryPointID] AS visitOrder,
-            reduce(s = 0, route IN routes | s + route.time) AS totalTime,
-            reduce(s = 0, route IN routes | s + route.distance) AS totalDistance
+                 [node IN fullPath | node.DeliveryPointID] AS visitOrder,
+                 reduce(s = 0, route IN routes | s + route.time) AS totalTime,
+                 reduce(s = 0, route IN routes | s + route.distance) AS totalDistance
             RETURN [r IN routes | r.relationship] AS path,
-            visitOrder,
-            totalTime,
-            totalDistance
-            """, start_x=start_x, start_y=start_y)
+                   visitOrder,
+                   totalTime,
+                   totalDistance
+        """
+        result = tx.run(query)
         return list(result)
 
     with driver.session() as session:
         try:
             data = session.execute_read(
                 find_path,
-                float(start_point_x)
+                float(start_x),
+                float(start_y)
             )
 
             if data:
@@ -105,44 +108,47 @@ def get_delivery_route():
                     print(node, "\n")
                 return jsonify("Success")
             else:
-                return jsonify({"error": "No path found between the specified delivery points"}), 404
+                return jsonify({"error": "No path found from the specified delivery point"}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
 
 @app.route('/delivery/routesingle', methods=['GET'])
 def get_delivery_route_single():
-    start_point = request.args.get('startPoint')
-    end_point = request.args.get('endPoint')
-    print("start point: " + start_point)
-    print("end point: " + end_point)
+    start_x = request.args.get('startX')
+    start_y = request.args.get('startY')
+    end_x = request.args.get('endX')
+    end_y = request.args.get('endY')
 
-    if not start_point or end_point:
+    if not start_x or not start_y or not end_x or not end_y:
         return jsonify({"error": "Please provide a start and end point"}), 400
 
     with driver.session() as session:
-        result = session.run("""
-            MATCH (start:DeliveryPoint {DeliveryPointID: """, start_point, """}), 
-                  (end:DeliveryPoint {DeliveryPointID: """, end_point, """})
-            CALL {
-              WITH start, end
-              MATCH path = allShortestPaths((start)-[:ROUTE_TO*]->(end))
-              RETURN path
-            }
+        query = f"""
+            MATCH (start:DeliveryPoint {{x: {start_x}, y: {start_y}}}), 
+                  (end:DeliveryPoint {{x: {end_x}, y: {end_y}}})
+            CALL {{
+                WITH start, end
+                MATCH path = allShortestPaths((start)-[:ROUTE_TO*]->(end))
+                RETURN path
+            }}
             WITH path, reduce(totalTime = 0.0, rel in relationships(path) | totalTime + (rel.distance / rel.speed_limit)) AS totalTime
             RETURN path, totalTime
             ORDER BY totalTime ASC
-        """)
+            LIMIT 1
+        """
+
+        result = session.run(query)
 
         record = result.single()
 
         if record:
             path = record["path"]
-            totalTime = record["totalTime"]
-            nodes = [{"DeliveryPointID": node["DeliveryPointID"]} for node in path.nodes]
+            total_time = record["totalTime"]
+            nodes = [{"x": node["x"], "y": node["y"]} for node in path.nodes]
             response = {
                 "route": nodes,
-                "totalTime": totalTime
+                "totalTime": total_time
             }
             return jsonify(response)
         else:
@@ -200,8 +206,10 @@ def post_delivery_point():
                     "MATCH (a:DeliveryPoint {x: $x1, y: $y1}), (b:DeliveryPoint {x: $x2, y: $y2}) "
                     "CREATE (a)-[:ROUTE_TO {distance: $distance, speed_limit: $speed_limit}]->(b)"
                 )
-                tx.run(create_edge_query, x1=x, y1=y, x2=existing_x, y2=existing_y, distance=distance, speed_limit=speed_limit)
-                tx.run(create_edge_query, x1=existing_x, y1=existing_y, x2=x, y2=y, distance=distance, speed_limit=speed_limit)
+                tx.run(create_edge_query, x1=x, y1=y, x2=existing_x, y2=existing_y, distance=distance,
+                       speed_limit=speed_limit)
+                tx.run(create_edge_query, x1=existing_x, y1=existing_y, x2=x, y2=y, distance=distance,
+                       speed_limit=speed_limit)
 
     with driver.session() as session:
         try:
