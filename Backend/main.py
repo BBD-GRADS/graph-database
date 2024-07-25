@@ -60,7 +60,6 @@ def get_delivery_route():
 
     def find_path(tx, start_x, start_y):
         query = f"""
-            // Step 1: Start from the DeliveryPoint with specified x and y coordinates and get all other points
             MATCH (start:DeliveryPoint {{x: {start_x}, y: {start_y}}})
             MATCH (other:DeliveryPoint)
             WHERE other <> start
@@ -84,11 +83,10 @@ def get_delivery_route():
                                     time: r.distance / r.speed_limit, distance: r.distance}}) AS routes
 
             WITH routes,
-                 [node IN fullPath | node.DeliveryPointID] AS visitOrder,
+                 [node IN fullPath | node.x + ', ' + node.y] AS visitOrder,
                  reduce(s = 0, route IN routes | s + route.time) AS totalTime,
                  reduce(s = 0, route IN routes | s + route.distance) AS totalDistance
-            RETURN [r IN routes | r.relationship] AS path,
-                   visitOrder,
+            RETURN visitOrder,
                    totalTime,
                    totalDistance
         """
@@ -104,9 +102,16 @@ def get_delivery_route():
             )
 
             if data:
-                for node in data:
-                    print(node, "\n")
-                return jsonify("Success")
+                response = data[0]
+                visit_order = response["visitOrder"]
+                total_time = response["totalTime"]
+                total_distance = response["totalDistance"]
+
+                return jsonify({
+                    "visit_order": visit_order,
+                    "total_time": total_time,
+                    "total_distance": total_distance
+                })
             else:
                 return jsonify({"error": "No path found from the specified delivery point"}), 404
         except Exception as e:
@@ -125,7 +130,7 @@ def get_delivery_route_single():
 
     with driver.session() as session:
         query = f"""
-            MATCH (start:DeliveryPoint {{x: {start_x}, y: {start_y}}}), 
+            MATCH (start:DeliveryPoint {{x: {start_x}, y: {start_y}}}),
                   (end:DeliveryPoint {{x: {end_x}, y: {end_y}}})
             CALL {{
                 WITH start, end
