@@ -10,6 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
 # Neo4j connection details from environment variables
 uri = os.getenv("NEO4J_URI")
 username = os.getenv("NEO4J_USERNAME")
@@ -53,41 +54,64 @@ def get_delivery_points():
 @app.route('/delivery/route', methods=['GET'])
 def get_delivery_route():
     start_point = request.args.get('startPoint')
-    end_point = request.args.get('endPoint')
 
-    def find_path(tx, start, end):
+    def find_path(tx, start):
         print("start point: " + start)
-        print("end point: " + end)
+        # TODO: remove hardcoded id
         result = tx.run("""
-            MATCH (start:DeliveryPoint {DeliveryPointID: $start_point}), 
-                          (end:DeliveryPoint {DeliveryPointID: $end_point})
-                    CALL {
-                      WITH start, end
-                      MATCH path = allShortestPaths((start)-[:ROUTE_TO*]->(end))
-                      RETURN path
-                    }
-                    WITH path, reduce(totalTime = 0.0, rel in relationships(path) | totalTime + (rel.distance / rel.speed_limit)) AS totalTime
-                    RETURN path, totalTime
-                    ORDER BY totalTime ASC
-                    LIMIT 1
-            """, start_point=start, end_point=end)
+            // Step 1: Start from DeliveryPoint 1 and get all other points
+            MATCH (start:DeliveryPoint {DeliveryPointID: 3})
+            MATCH (other:DeliveryPoint)
+            WHERE other <> start
+            WITH start, collect(other) AS others
+ 
+            // Step 2: Find shortest paths from start to all others, based on time
+            UNWIND others AS other
+            MATCH path = shortestPath((start)-[:ROUTE_TO*]-(other))
+            WITH start, other, path, 
+            reduce(s = 0, r IN relationships(path) | s + (r.distance / r.speed_limit)) AS time
+            ORDER BY time
+ 
+            // Step 3: Collect ordered nodes
+            WITH start, collect({node: other, time: time}) AS orderedNodes
+ 
+            // Step 4: Create full path including start node
+            WITH [start] + [node IN orderedNodes | node.node] AS fullPath
+ 
+            // Step 5: Create pairs of consecutive nodes
+            UNWIND range(0, size(fullPath) - 2) AS i
+            WITH fullPath, i, fullPath[i] AS current, fullPath[i+1] AS next
+ 
+            // Step 6: Find direct route between consecutive nodes
+            MATCH (current)-[r:ROUTE_TO]->(next)
+            WITH fullPath, collect({start: current, end: next, relationship: r, 
+            time: r.distance / r.speed_limit, distance: r.distance}) AS routes
+ 
+            // Step 7: Calculate results
+            WITH routes, 
+            [node IN fullPath | node.DeliveryPointID] AS visitOrder,
+            reduce(s = 0, route IN routes | s + route.time) AS totalTime,
+            reduce(s = 0, route IN routes | s + route.distance) AS totalDistance
+            RETURN [r IN routes | r.relationship] AS path,
+            visitOrder,
+            totalTime,
+            totalDistance
+            """)
         return list(result)
 
     with driver.session() as session:
         try:
             data = session.execute_read(
                 find_path,
-                start_point,
-                end_point
+                start_point
             )
 
             if data:
-                path = data["path"]
-                totalTime = data["totalTime"]
-                nodes = [{"DeliveryPointID": node["DeliveryPointID"]} for node in path.nodes]
                 response = {
-                    "route": nodes,
-                    "totalTime": totalTime
+                    "path": data["path"],
+                    "visitOrder": data["visitOrder"],
+                    "totalTime": data["totalTime"],
+                    "totalDistance": data["totalDistance"]
                 }
                 return jsonify(response)
             else:
