@@ -7,7 +7,7 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
-  AlertDialogCloseButton,
+  Button,
   useDisclosure,
 } from "@chakra-ui/react";
 import "./homePage.css";
@@ -41,6 +41,7 @@ function App() {
   };
 
   const deleteLocationHandler = () => {
+    //call endpoint
     const { x, y } = deleteLocation;
     if (x !== "" && y !== "") {
       setLocations(
@@ -50,6 +51,11 @@ function App() {
       );
       setDeleteLocation({ x: "", y: "" });
     }
+  };
+
+  const deleteAllLocationHandler = () => {
+    //call endpoint
+    onClose();
   };
 
   const handleSubmit = (event) => {
@@ -204,6 +210,32 @@ function App() {
               <button className="button" onClick={deleteLocationHandler}>
                 Delete Location
               </button>
+              <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef}>
+                <AlertDialogOverlay>
+                  <AlertDialogContent>
+                    <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                      Delete Customer
+                    </AlertDialogHeader>
+
+                    <AlertDialogBody>
+                      Are you sure? You can't undo this action afterwards.
+                    </AlertDialogBody>
+
+                    <AlertDialogFooter>
+                      <Button ref={cancelRef} onClick={onClose}>
+                        Cancel
+                      </Button>
+                      <Button
+                        colorScheme="red"
+                        onClick={deleteAllLocationHandler}
+                        ml={3}
+                      >
+                        Delete
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialogOverlay>
+              </AlertDialog>
             </section>
           </section>
         </section>
