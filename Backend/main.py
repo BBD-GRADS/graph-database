@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request, CORS
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 from neo4j import GraphDatabase, basic_auth
 from dotenv import load_dotenv
 import os
@@ -9,7 +10,7 @@ import math
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app)
 
 # Neo4j connection details from environment variables
 uri = os.getenv("NEO4J_URI")
@@ -107,13 +108,9 @@ def get_delivery_route():
             )
 
             if data:
-                response = {
-                    "path": data["path"],
-                    "visitOrder": data["visitOrder"],
-                    "totalTime": data["totalTime"],
-                    "totalDistance": data["totalDistance"]
-                }
-                return jsonify(response)
+                for node in data:
+                    print(node)
+                return jsonify("Success")
             else:
                 return jsonify({"error": "No path found between the specified delivery points"}), 404
         except Exception as e:
