@@ -1,5 +1,15 @@
 import React, { useState } from "react";
 import logo from "../../assets/logo.png";
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  AlertDialogCloseButton,
+  useDisclosure,
+} from "@chakra-ui/react";
 import "./homePage.css";
 
 function App() {
@@ -8,12 +18,29 @@ function App() {
   const [route, setRoute] = useState([]);
   const [locations, setLocations] = useState([]);
   const [newLocation, setNewLocation] = useState({ x: "", y: "" });
+  const [newSpeedLimit, setNewSpeedLimit] = useState({ x: "", y: "" });
+  const [deleteLocation, setDeleteLocation] = useState({ x: "", y: "" });
 
-  const addLocation = () => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const cancelRef = React.useRef();
+
+  const addLocationHandler = () => {
     const { x, y } = newLocation;
     if (x !== "" && y !== "") {
       setLocations([...locations, { x: parseInt(x), y: parseInt(y) }]);
       setNewLocation({ x: "", y: "" });
+    }
+  };
+
+  const deleteLocationHandler = () => {
+    const { x, y } = deleteLocation;
+    if (x !== "" && y !== "") {
+      setLocations(
+        locations.filter(
+          (loc) => loc.x !== parseInt(x) || loc.y !== parseInt(y)
+        )
+      );
+      setDeleteLocation({ x: "", y: "" });
     }
   };
 
@@ -95,16 +122,59 @@ function App() {
               </button>
             </section>
           </form>
+
           <label className="title-container">Add new drop off location:</label>
           <section className="panel-section">
+            <form onSubmit={addLocationHandler}>
+              <section className="input-container">
+                <label>New Location (x, y): </label>
+                <input
+                  className="input"
+                  type="number"
+                  value={newLocation.x}
+                  onChange={(e) =>
+                    setNewLocation({ ...newLocation, x: e.target.value })
+                  }
+                  placeholder="x"
+                />
+                <label> ; </label>
+                <input
+                  className="input"
+                  type="number"
+                  value={newLocation.y}
+                  onChange={(e) =>
+                    setNewLocation({ ...newLocation, y: e.target.value })
+                  }
+                  placeholder="y"
+                />
+              </section>
+              <section className="input-container">
+                <label>Add Speed Limit (km/h): </label>
+                <input
+                  className="input"
+                  type="number"
+                  value={newSpeedLimit}
+                  onChange={(val) => setNewSpeedLimit(val)}
+                  placeholder="km/h"
+                />
+              </section>
+              <section className="button-container">
+                <button className="button" type="submit">
+                  Add New Location
+                </button>
+              </section>
+            </form>
+          </section>
+          <label className="title-container">Delete drop off location:</label>
+          <section className="panel-section">
             <section className="input-container">
-              <label>New Location (x, y): </label>
+              <label>Location (x, y): </label>
               <input
                 className="input"
                 type="number"
-                value={newLocation.x}
+                value={deleteLocation.x}
                 onChange={(e) =>
-                  setNewLocation({ ...newLocation, x: e.target.value })
+                  setDeleteLocation({ ...deleteLocation, x: e.target.value })
                 }
                 placeholder="x"
               />
@@ -112,16 +182,19 @@ function App() {
               <input
                 className="input"
                 type="number"
-                value={newLocation.y}
+                value={deleteLocation.y}
                 onChange={(e) =>
-                  setNewLocation({ ...newLocation, y: e.target.value })
+                  setDeleteLocation({ ...deleteLocation, y: e.target.value })
                 }
                 placeholder="y"
               />
             </section>
             <section className="button-container">
-              <button className="button" onClick={addLocation}>
-                Add Location
+              <button className="button--dark" onClick={onOpen}>
+                Delete ALL Locations
+              </button>
+              <button className="button" onClick={deleteLocationHandler}>
+                Delete Location
               </button>
             </section>
           </section>
