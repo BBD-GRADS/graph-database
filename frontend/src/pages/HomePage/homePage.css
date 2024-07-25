@@ -90,7 +90,7 @@ form {
   background-color: #d9d9d9;
   border-radius: 8px;
   height: 90%;
-  width: 5vw;
+  width: 4vw;
   border: none;
   text-align: center;
 }
@@ -98,8 +98,8 @@ form {
 .map-container {
   display: flex;
   justify-content: center;
-  align-items: center;
   width: 100%;
+  padding: 1.5rem;
 }
 
 .grid {

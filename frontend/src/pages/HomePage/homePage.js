@@ -8,6 +8,15 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Button,
+  Input,
+  Box,
+  Image,
+  Flex,
+  Text,
+  VStack,
+  FormControl,
+  FormLabel,
+  Grid,
   useDisclosure,
 } from "@chakra-ui/react";
 import "./homePage.css";
@@ -24,6 +33,8 @@ function App() {
   const [newLocation, setNewLocation] = useState({ x: "", y: "" });
   const [newSpeedLimit, setNewSpeedLimit] = useState("");
   const [deleteLocation, setDeleteLocation] = useState({ x: "", y: "" });
+  const [error, setError] = useState("");
+  const [startLocationError, setStartLocationError] = useState();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = React.useRef();
@@ -62,6 +73,7 @@ function App() {
       }
     }
   };
+
   const deleteLocationHandler = async () => {
     const { x, y } = deleteLocation;
     if (x !== "" && y !== "") {
@@ -86,11 +98,41 @@ function App() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    // simulate finding a route with fake data covering all drop-off points
-    // will add lines instead of just highlighting the route when backend returns optimal route
+    const validStart = validateStartLocation();
+    if (validStart) {
+      if (start) {
+        const routePoints = [start, ...locations];
+        setRoute(routePoints);
+      }
+    }
+  };
+
+  const handleGridSizeChange = (e) => {
+    const value = parseInt(e.target.value);
+    if (value > 20) {
+      setError("Grid size cannot exceed 20");
+      setGridSize(5);
+    } else {
+      setError("");
+      setGridSize(value);
+    }
+  };
+
+  const validateStartLocation = () => {
     if (start) {
-      const routePoints = [start, ...locations];
-      setRoute(routePoints);
+      const isValid = locations.some(
+        (loc) => loc.x === start.x && loc.y === start.y
+      );
+      if (!isValid) {
+        setStartLocationError(
+          "Start location must be one of the location options"
+        );
+        setStart(null);
+        return false;
+      } else {
+        setStartLocationError("");
+        return true;
+      }
     }
   };
 
@@ -114,62 +156,111 @@ function App() {
   };
 
   return (
-    <div className="page-container">
-      <header className="nav-bar">
-        <div className="header-container">
-          <img src={logo} alt="logo" />
-        </div>
-      </header>
-      <main className="content-container">
-        <section className="side-panel">
-          <label className="title-container">Calculate my Route:</label>
+    <Box className="page-container">
+      <Flex
+        as="header"
+        className="nav-bar"
+        justifyContent="flex-start"
+        alignItems="center"
+      >
+        <Image src={logo} alt="logo" h="8vh" />
+      </Flex>
+      <Flex as="main" className="content-container">
+        <Flex
+          as="section"
+          className="side-panel"
+          justifyContent="space-between"
+        >
+          <Text
+            className="title-container"
+            bg="#174824"
+            color="white"
+            w="30vw"
+            fontSize="1.5rem"
+            fontWeight="bold"
+            p={2}
+          >
+            Calculate my Route:
+          </Text>
           <form onSubmit={handleSubmit}>
-            <section className="input-container">
-              <label>Grid Size: </label>
-              <input
-                className="input"
-                type="number"
-                value={gridSize}
-                onChange={(e) => setGridSize(parseInt(e.target.value))}
-                placeholder="Grid Size"
-              />
-            </section>
-            <section className="input-container">
-              <label>Start Location (x, y): </label>
-              <input
-                className="input"
-                type="number"
-                value={start?.x || ""}
-                onChange={(e) =>
-                  setStart({ x: parseInt(e.target.value), y: start?.y || "" })
-                }
-                placeholder="x"
-              />
-              <label> ; </label>
-              <input
-                className="input"
-                type="number"
-                value={start?.y || ""}
-                onChange={(e) =>
-                  setStart({ x: start?.x || "", y: parseInt(e.target.value) })
-                }
-                placeholder="y"
-              />
-            </section>
-            <section className="button-container">
-              <button className="button" type="submit">
+            <Flex flexDir="column">
+              <FormControl className="input-container" width="25vw">
+                <FormLabel>Grid Size: </FormLabel>
+                <Input
+                  className="input"
+                  width="8vw"
+                  type="number"
+                  value={gridSize}
+                  onChange={handleGridSizeChange}
+                  placeholder="Grid Size"
+                />
+              </FormControl>
+              {error && <Text color="red">{error}</Text>}
+            </Flex>
+            <Flex flexDir="column">
+              <FormControl className="input-container" width="25vw">
+                <FormLabel>Start Location (x, y): </FormLabel>
+                <Input
+                  className="input"
+                  width="5vw"
+                  type="number"
+                  value={start?.x || ""}
+                  onChange={(e) =>
+                    setStart({ x: e.target.value, y: start?.y || "" })
+                  }
+                  placeholder="x"
+                />
+                <Text> ; </Text>
+                <Input
+                  className="input"
+                  width="5vw"
+                  type="number"
+                  value={start?.y || ""}
+                  onChange={(e) =>
+                    setStart({ x: start?.x || "", y: e.target.value })
+                  }
+                  placeholder="y"
+                />
+              </FormControl>
+              {startLocationError && (
+                <Text color="red">{startLocationError}</Text>
+              )}
+            </Flex>
+            <Flex
+              className="button-container"
+              justifyContent="flex-end"
+              gap={2}
+            >
+              <Button
+                className="button"
+                type="submit"
+                bg="#6b9676"
+                color="white"
+                _hover={{ bg: "#174824" }}
+              >
                 Find Route
-              </button>
-            </section>
+              </Button>
+            </Flex>
           </form>
 
-          <label className="title-container">Add new drop off location:</label>
-          <section className="panel-section">
+          <Text
+            className="title-container"
+            bg="#174824"
+            color="white"
+            w="30vw"
+            fontSize="1.5rem"
+            fontWeight="bold"
+            p={2}
+          >
+            Add new drop off location:
+          </Text>
+          <VStack as="section" className="panel-section" spacing={4}>
             <form onSubmit={addLocationHandler}>
-              <section className="input-container">
-                <label>New Location (x, y): </label>
-                <input
+              <FormControl className="input-container" width="25vw">
+                <FormLabel>New Location (x, y): </FormLabel>
+                <Input
                   className="input"
+                  width="5vw"
                   type="number"
                   value={newLocation.x}
                   onChange={(e) =>
@@ -177,9 +268,10 @@ function App() {
                   }
                   placeholder="x"
                 />
-                <label> ; </label>
-                <input
+                <Text> ; </Text>
+                <Input
                   className="input"
+                  width="5vw"
                   type="number"
                   value={newLocation.y}
                   onChange={(e) =>
@@ -187,30 +279,52 @@ function App() {
                   }
                   placeholder="y"
                 />
-              </section>
-              <section className="input-container">
-                <label>Add Speed Limit (km/h): </label>
-                <input
+              </FormControl>
+              <FormControl className="input-container" width="25vw">
+                <FormLabel>Add Speed Limit (km/h): </FormLabel>
+                <Input
                   className="input"
+                  width="8vw"
+                  type="number"
                   value={newSpeedLimit}
                   onChange={(e) => setNewSpeedLimit(e.target.value)}
                   placeholder="km/h"
-                  controlled
                 />
-              </section>
-              <section className="button-container">
-                <button className="button" type="submit">
+              </FormControl>
+              <Flex
+                className="button-container"
+                justifyContent="flex-end"
+                gap={2}
+              >
+                <Button
+                  className="button"
+                  type="submit"
+                  bg="#6b9676"
+                  color="white"
+                  _hover={{ bg: "#174824" }}
+                >
                   Add New Location
-                </button>
-              </section>
+                </Button>
+              </Flex>
             </form>
-          </section>
-          <label className="title-container">Delete drop off location:</label>
-          <section className="panel-section">
-            <section className="input-container">
-              <label>Location (x, y): </label>
-              <input
+          </VStack>
+          <Text
+            className="title-container"
+            bg="#174824"
+            color="white"
+            w="30vw"
+            fontSize="1.5rem"
+            fontWeight="bold"
+            p={2}
+          >
+            Delete drop off location:
+          </Text>
+          <VStack as="section" className="panel-section" spacing={4}>
+            <FormControl className="input-container" width="25vw">
+              <FormLabel>Location (x, y): </FormLabel>
+              <Input
                 className="input"
+                width="5vw"
                 type="number"
                 value={deleteLocation.x}
                 onChange={(e) =>
@@ -218,9 +332,10 @@ function App() {
                 }
                 placeholder="x"
               />
-              <label> ; </label>
-              <input
+              <Text> ; </Text>
+              <Input
                 className="input"
+                width="5vw"
                 type="number"
                 value={deleteLocation.y}
                 onChange={(e) =>
@@ -228,19 +343,40 @@ function App() {
                 }
                 placeholder="y"
               />
-            </section>
-            <section className="button-container">
-              <button className="button--dark" onClick={onOpen}>
-                Delete ALL Locations
-              </button>
-              <button className="button" onClick={deleteLocationHandler}>
+            </FormControl>
+            <Flex
+              className="button-container"
+              justifyContent="flex-end"
+              gap={2}
+            >
+              <Button
+                className="button--dark"
+                bg="rgb(180, 0, 0)"
+                color="white"
+                width="fit-content"
+                _hover={{ bg: "rgb(112, 0, 0)" }}
+                onClick={onOpen}
+              >
+                Delete All Locations
+              </Button>
+              <Button
+                className="button"
+                bg="#6b9676"
+                color="white"
+                _hover={{ bg: "#174824" }}
+                onClick={deleteLocationHandler}
+              >
                 Delete Location
-              </button>
-              <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef}>
+              </Button>
+              <AlertDialog
+                isOpen={isOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onClose}
+              >
                 <AlertDialogOverlay>
                   <AlertDialogContent>
                     <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                      Delete Customer
+                      Delete All Locations
                     </AlertDialogHeader>
 
                     <AlertDialogBody>
@@ -262,24 +398,60 @@ function App() {
                   </AlertDialogContent>
                 </AlertDialogOverlay>
               </AlertDialog>
-            </section>
-          </section>
-        </section>
-        <section className="map-container">
-          <div
+            </Flex>
+          </VStack>
+        </Flex>
+        <Flex
+          as="section"
+          className="map-container"
+          flexDir="column"
+          justifyContent="space-between"
+          gap="4vh"
+        >
+          <Grid
             className="grid"
-            style={{
-              gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-              gridTemplateRows: `repeat(${gridSize}, 1fr)`,
-            }}
+            templateColumns={`repeat(${gridSize}, 1fr)`}
+            templateRows={`repeat(${gridSize}, 1fr)`}
+            gap={2}
+            p={6}
+            bg="white"
+            boxShadow="0px 4px 6px #545454"
           >
             {Array.from({ length: gridSize }).map((_, x) =>
               Array.from({ length: gridSize }).map((_, y) => renderCell(x, y))
             )}
-          </div>
-        </section>
-      </main>
-    </div>
+          </Grid>
+          <Flex flexDir="row" justify="space-between" gap="5vw">
+            <Text
+              className="title-container"
+              bg="#174824"
+              color="white"
+              w="15vw"
+              height="100%"
+              fontSize="1.5rem"
+              fontWeight="bold"
+              p={2}
+            >
+              Your Route:
+            </Text>
+            <Flex flexDir="column" gap="0.5rem">
+              <Flex className="input-container">
+                <Text>Total Distance:</Text>
+                <Text>Your Distance</Text>
+              </Flex>
+              <Flex className="input-container">
+                <Text>Total Time:</Text>
+                <Text>Your time</Text>
+              </Flex>
+              <Flex className="input-container">
+                <Text>Route:</Text>
+                <Text>Your Route</Text>
+              </Flex>
+            </Flex>
+          </Flex>
+        </Flex>
+      </Flex>
+    </Box>
   );
 }
 
