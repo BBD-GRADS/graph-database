@@ -44,3 +44,18 @@ export const deleteAllDeliveryPoints = async () => {
 		throw error;
 	}
 };
+
+export const getDeliveryRoute = async (startX, startY) => {
+	try {
+		const response = await axios.get(`${BASE_URL}/delivery/route`, {
+			params: {
+				startX: startX,
+				startY: startY,
+			},
+		});
+		return response.data;
+	} catch (error) {
+		console.error("Error fetching delivery route:", error);
+		throw error;
+	}
+};
