@@ -47,8 +47,6 @@ function App() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = React.useRef();
 
-  console.log("start: ", start);
-
   useEffect(() => {
     getAllDeliveryPoints()
       .then((points) => setLocations(points))
