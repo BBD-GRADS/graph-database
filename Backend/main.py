@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, CORS
 from neo4j import GraphDatabase, basic_auth
 from dotenv import load_dotenv
 import os
@@ -9,7 +9,7 @@ import math
 load_dotenv()
 
 app = Flask(__name__)
-
+CORS(app)
 # Neo4j connection details from environment variables
 uri = os.getenv("NEO4J_URI")
 username = os.getenv("NEO4J_USERNAME")
