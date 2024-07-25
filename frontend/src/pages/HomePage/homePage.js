@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import logo from "../../assets/logo.png";
 import {
   AlertDialog,
@@ -11,7 +11,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import "./homePage.css";
-
+import { getAllDeliveryPoints } from "../../apiClient/apiClient";
 function App() {
   const [gridSize, setGridSize] = useState(5);
   const [start, setStart] = useState(null);
@@ -23,6 +23,14 @@ function App() {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = React.useRef();
+
+  useEffect(() => {
+    getAllDeliveryPoints()
+      .then((points) => setLocations(points))
+      .catch((error) =>
+        console.error("Error fetching delivery points:", error)
+      );
+  }, []);
 
   const addLocationHandler = () => {
     const { x, y } = newLocation;
