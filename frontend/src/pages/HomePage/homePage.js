@@ -10,7 +10,11 @@ function App() {
 	const [newLocation, setNewLocation] = useState({ x: "", y: "" });
 
 	useEffect(() => {
-		getAllDeliveryPoints();
+		getAllDeliveryPoints()
+			.then((points) => setLocations(points))
+			.catch((error) =>
+				console.error("Error fetching delivery points:", error)
+			);
 	}, []);
 
 	const addLocation = () => {
