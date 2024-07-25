@@ -53,15 +53,14 @@ def get_delivery_points():
 @app.route('/delivery/route', methods=['GET'])
 def get_delivery_route():
     start_point_x = request.args.get('startPointX')
-    start_point_y = request.args.get('startPointY')
 
-    if not start_point_x or not start_point_y:
-        return jsonify({"error": "Please provide both startPointX and startPointY"}), 400
+    if not start_point_x:
+        return jsonify({"error": "Please provide startPointX"}), 400
 
     def find_path(tx, start_x, start_y):
         result = tx.run("""
             // Step 1: Start from DeliveryPoint 1 and get all other points
-            MATCH (start:DeliveryPoint {DeliveryPointID: """, start, """})
+            MATCH (start:DeliveryPoint {DeliveryPointID: """, start_point_x, """})
             MATCH (other:DeliveryPoint)
             WHERE other <> start
             WITH start, collect(other) AS others
@@ -98,8 +97,7 @@ def get_delivery_route():
         try:
             data = session.execute_read(
                 find_path,
-                float(start_point_x),
-                float(start_point_y)
+                float(start_point_x)
             )
 
             if data:
@@ -118,6 +116,9 @@ def get_delivery_route_single():
     end_point = request.args.get('endPoint')
     print("start point: " + start_point)
     print("end point: " + end_point)
+
+    if not start_point or end_point:
+        return jsonify({"error": "Please provide a start and end point"}), 400
 
     with driver.session() as session:
         result = session.run("""
