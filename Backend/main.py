@@ -6,22 +6,18 @@ import os
 import atexit
 import math
 
-# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Neo4j connection details from environment variables
 uri = os.getenv("NEO4J_URI")
 username = os.getenv("NEO4J_USERNAME")
 password = os.getenv("NEO4J_PASSWORD")
 
-# Create a Neo4j driver instance
 driver = GraphDatabase.driver(uri, auth=basic_auth(username, password))
 
 
-# Ensure the driver is closed on exit
 @atexit.register
 def close_driver():
     driver.close()
@@ -49,7 +45,7 @@ def get_delivery_points():
             return jsonify({"error": str(e)}), 500
 
 
-# Get optimal delivery route
+# Get optimal delivery route between one delivery point and every other delivery points
 @app.route('/delivery/route', methods=['GET'])
 def get_delivery_route():
     start_x = request.args.get('startX')
@@ -129,6 +125,7 @@ def get_delivery_route():
             return jsonify({"error": str(e)}), 500
 
 
+# Get optimal route between two delivery points
 @app.route('/delivery/routesingle', methods=['GET'])
 def get_delivery_route_single():
     start_x = request.args.get('startX')
@@ -198,7 +195,6 @@ def post_delivery_point():
     if x is None or y is None or speed_limit is None:
         return jsonify({"error": "x, y, and speed_limit must be provided"}), 400
 
-    # Convert x, y, and speed_limit to appropriate types
     try:
         x = float(x)
         y = float(y)
@@ -207,7 +203,6 @@ def post_delivery_point():
         return jsonify({"error": "x, y, and speed_limit must be valid numbers"}), 400
 
     def create_point_and_edges(tx, x, y, speed_limit):
-        # Check if point already exists
         existing_point_query = f"""
             MATCH (p:DeliveryPoint {{x: {x}, y: {y}}}) RETURN p
         """
@@ -215,18 +210,15 @@ def post_delivery_point():
         if existing_point:
             return {"error": f"Delivery point with coordinates ({x}, {y}) already exists"}
 
-        # Create the new delivery point
         create_point_query = f"""
             CREATE (p:DeliveryPoint {{x: {x}, y: {y}}})
             RETURN p
         """
         tx.run(create_point_query)
 
-        # Find all existing delivery points
         existing_points_query = "MATCH (p:DeliveryPoint) RETURN p"
         existing_points = tx.run(existing_points_query)
 
-        # Create edges between the new point and all existing points
         for record in existing_points:
             existing_point = record["p"]
             existing_x = existing_point["x"]
@@ -262,7 +254,6 @@ def delete_delivery_point():
         return jsonify({"error": "x and y must be provided"}), 400
 
     def delete_point(tx, x, y):
-        # Check if point exists
         existing_point_query = f"""
             MATCH (p:DeliveryPoint {{x: {x}, y: {y}}}) RETURN p
         """
@@ -270,7 +261,6 @@ def delete_delivery_point():
         if not existing_point:
             return {"error": f"Delivery point with coordinates ({x}, {y}) does not exist"}
 
-        # Delete the point
         delete_point_query = f"""
             MATCH (p:DeliveryPoint {{x: {x}, y: {y}}}) DETACH DELETE p
         """
