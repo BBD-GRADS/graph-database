@@ -150,6 +150,7 @@ function App() {
   };
 
   const renderCell = (x, y) => {
+    // eslint-disable-next-line eqeqeq
     const isStart = start && start.x == x && start.y == y;
     const isLocation = locations.some((loc) => loc.x === x && loc.y === y);
     const isRoute = route.some((point) => point.x === x && point.y === y);
