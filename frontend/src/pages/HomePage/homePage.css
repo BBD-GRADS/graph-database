@@ -1,7 +1,10 @@
+:host {
+  background-color: #f1f1f1;
+}
+
 .page-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
   background-color: #f1f1f1;
 }
 
@@ -100,6 +103,7 @@ form {
   justify-content: center;
   width: 100%;
   padding: 1.5rem;
+  align-items: center;
 }
 
 .grid {
@@ -157,25 +161,14 @@ form {
   width: 100%;
   align-items: center;
   justify-content: center;
-  border: 1px solid #ccc;
+  border: 2px solid white;
+  background-color: #ccc;
 }
 
-.cell.start {
-  background-color: green;
-  color: white;
+.route {
+  background-color: #6b9676; /* Green line color */
 }
 
-.cell.end {
-  background-color: red;
-  color: white;
-}
-
-.cell.location {
-  background-color: blue;
-  color: white;
-}
-
-.cell.route {
-  background-color: yellow;
-  color: black;
+.start {
+  background-color: #174824;
 }
